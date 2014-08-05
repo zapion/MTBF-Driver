@@ -159,7 +159,7 @@ class MTBF_Driver:
             ## to detect continuous failure We can then
             ## remove this
             if self.runner.passed == 0:
-                # self.deinit()
+                self.deinit()
                 break
 
     def get_report(self):
