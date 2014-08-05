@@ -6,6 +6,8 @@ import signal
 import time
 import json
 import shutil
+import mozdevice
+from marionette import Marionette
 from gaiatest.runtests import GaiaTestRunner, GaiaTestOptions
 from utils.memory_report_args import memory_report_args
 from utils.step_gen import RandomStepGen, ReplayStepGen
@@ -157,7 +159,7 @@ class MTBF_Driver:
             ## to detect continuous failure We can then
             ## remove this
             if self.runner.passed == 0:
-                self.deinit()
+                # self.deinit()
                 break
 
     def get_report(self):
@@ -193,6 +195,34 @@ class MTBF_Driver:
         if os.path.exists(info):
             shutil.copy2(info, self.workspace)
 
+        self.submit_crash()
+
+    def submit_crash(self):
+        md = mozdevice.DeviceManagerADB()
+        md.reboot(wait=True)
+
+        time.sleep(30)
+
+        # check for marionette port
+        if os.environ.has_key("port"):
+           port = os.environ['port']
+        else:
+           port = 2828
+
+        # connect to marionette server
+        md.forward("tcp:" + str(port), "tcp:2828")
+        m = Marionette('localhost', port)
+        m.start_session()
+
+        # import MTBF's data layer js, do wifi, and submit report
+        m.switch_to_frame()
+        m.import_script(os.path.join(self.ori_dir, "atoms/data_layer.js"))
+        m.execute_async_script("return MTBFDataLayer.enableWiFi()")
+        m.execute_async_script("return MTBFDataLayer.connectToWiFi(%s)" % json.dumps(self.conf['wifi']), script_timeout = max(m.timeout, 60000))
+        m.execute_async_script("return MTBFDataLayer.setSetting('app.reportCrashes', 'always');")
+        mtbf_logger.info("Crash Report submitter setup was done.")
+
+        md.reboot()
 
 def main():
     ## set default as 2 mins
@@ -221,7 +251,6 @@ def main():
         signal.alarm(0)
     else:
         mtbf.start_gaiatest()
-
 
 if __name__ == '__main__':
     main()

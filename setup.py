@@ -40,6 +40,6 @@ setup(
         'mtbf = mtbf_driver.mtbf:main']},
     install_requires=deps,
 
-    package_data={'': ['conf/*.json', 'runlist/*.list', 'shell/*', "info"]},
+    package_data={'': ['atoms/*.js', 'conf/*.json', 'info', 'runlist/*.list', 'shell/*']},
     include_package_data=True
 )
