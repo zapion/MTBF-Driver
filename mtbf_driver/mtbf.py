@@ -7,6 +7,7 @@ import time
 import json
 import shutil
 import mozdevice
+import subprocess
 from marionette import Marionette
 from gaiatest.runtests import GaiaTestRunner, GaiaTestOptions
 from utils.memory_report_args import memory_report_args
@@ -203,11 +204,20 @@ class MTBF_Driver:
 
         time.sleep(30)
 
+        # check ports and select default port
+        default_port = 2828
+        current_ports = []
+        p = subprocess.Popen(['adb', 'forward', '--list'], stdout=subprocess.PIPE)
+        for response in p.communicate()[0].split('\n'):
+            current_ports.append(response.split(' ')[1].split(':')[1])
+        while default_port in current_ports:
+            default_port += 1
+
         # check for marionette port
         if os.environ.has_key("port"):
            port = os.environ['port']
         else:
-           port = 2828
+           port = default_port
 
         # connect to marionette server
         md.forward("tcp:" + str(port), "tcp:2828")
