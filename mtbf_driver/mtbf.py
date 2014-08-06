@@ -209,7 +209,8 @@ class MTBF_Driver:
         current_ports = []
         p = subprocess.Popen(['adb', 'forward', '--list'], stdout=subprocess.PIPE)
         for response in p.communicate()[0].split('\n'):
-            current_ports.append(response.split(' ')[1].split(':')[1])
+            if ':' in response:
+                current_ports.append(int(response.split(' ')[1].split(':')[1]))
         while default_port in current_ports:
             default_port += 1
 
