@@ -17,6 +17,7 @@ from utils.time_utils import time2sec
 logging.basicConfig(level=logging.DEBUG)
 mtbf_logger = logging.getLogger(__name__)
 
+
 class MTBF_Driver:
     ## time format here is seconds
     def __init__(self, time, rp=None):
@@ -99,7 +100,7 @@ class MTBF_Driver:
 
         current_round = 0
         while(True):
-            current_working_folder=os.getcwd()
+            current_working_folder = os.getcwd()
             ## create directory for logs or debugging information
             if not os.path.exists(self.archive_folder):
                 os.makedirs(self.archive_folder)
@@ -215,10 +216,10 @@ class MTBF_Driver:
             default_port += 1
 
         # check for marionette port
-        if os.environ.has_key("port"):
-           port = os.environ['port']
+        if "port" in os.environ:
+            port = os.environ['port']
         else:
-           port = default_port
+            port = default_port
 
         # connect to marionette server
         md.forward("tcp:" + str(port), "tcp:2828")
@@ -229,11 +230,12 @@ class MTBF_Driver:
         m.switch_to_frame()
         m.import_script(os.path.join(self.ori_dir, "atoms/data_layer.js"))
         m.execute_async_script("return MTBFDataLayer.enableWiFi()")
-        m.execute_async_script("return MTBFDataLayer.connectToWiFi(%s)" % json.dumps(self.conf['wifi']), script_timeout = max(m.timeout, 60000))
+        m.execute_async_script("return MTBFDataLayer.connectToWiFi(%s)" % json.dumps(self.conf['wifi']), script_timeout=max(m.timeout, 60000))
         m.execute_async_script("return MTBFDataLayer.setSetting('app.reportCrashes', 'always');")
         mtbf_logger.info("Crash Report submitter setup was done.")
 
         md.reboot()
+
 
 def main():
     ## set default as 2 mins
