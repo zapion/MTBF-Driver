@@ -3,6 +3,7 @@ import sys
 import os.path
 import signal
 import time
+import datetime
 import json
 import shutil
 from gaiatest.runtests import GaiaTestRunner, GaiaTestOptions
@@ -10,6 +11,7 @@ from mozlog import structured
 
 from utils.memory_report_args import memory_report_args
 from utils.step_gen import RandomStepGen, ReplayStepGen
+from utils.crash_report import CrashReport
 from utils.time_utils import time2sec
 
 
@@ -44,10 +46,8 @@ class MTBF_Driver:
         self.options = options
 
         logger = structured.commandline.setup_logging(
-        options.logger_name, options, {"tbpl": sys.stdout})
-
+            options.logger_name, options, {"tbpl": sys.stdout})
         options.logger = logger
-
         self.logger = logger
 
         conf = []
@@ -99,6 +99,7 @@ class MTBF_Driver:
     def start_gaiatest(self):
         ## Infinite run before time expired
         self.start_time = time.time()
+        self.crash_report = CrashReport(self.start_time)
         self.replay = os.getenv("MTBF_REPLAY")
         if self.replay:
             sg = ReplayStepGen(workspace=self.workspace, replay=self.replay)
@@ -109,8 +110,11 @@ class MTBF_Driver:
         self.logger.info("Starting MTBF....")
 
         while(True):
+
             self.collect_metrics(current_round)
             current_round = current_round + 1
+            if self.crash_report.getCrashReport():
+                self.get_report()
 
             ## Run test
             ## workaround: kill the runner and create another
@@ -134,14 +138,21 @@ class MTBF_Driver:
                 break
 
     def get_report(self):
-        self.running_time = time.time() - self.start_time
-        self.logger.info("\n*Total MTBF Time: %.3fs" % self.running_time)
-        self.logger.info('\nMTBF TEST SUMMARY\n-----------------')
+        last_crash = self.crash_report.lastCrash
+        self.running_time = last_crash - self.start_time
+        crash_number = len(self.crash_report)
+        self.logger.info("Total Running Time Before Failure:   %.3fs" % self.running_time)
+        if crash_number > 0:
+            self.logger.info("Last Crash at:                       %s" % datetime.datetime.fromtimestamp(last_crash).strftime('%Y-%m-%d %H:%M:%S'))
+            self.logger.info("Total Crash Numbers:                 %d" % crash_number)
+            self.logger.info("Total MTBF Time:                     %.3fs" % (self.running_time / crash_number))
+        self.logger.info('MTBF TEST SUMMARY-----------------')
         self.logger.info('passed: %d' % self.passed)
         self.logger.info('failed: %d' % self.failed)
         self.logger.info('todo:   %d' % self.todo)
 
     def time_up(self, signum, frame):
+        self.crash_report._crash_record.append(time.time())
         self.logger.info("Signal handler called with signal" + str(signum))
         self.deinit()
         os._exit(0)
